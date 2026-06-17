@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Second Opinion — a VeriTrace tool</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Ccircle%20cx%3D%22170%22%20cy%3D%22256%22%20r%3D%22150%22%20fill%3D%22none%22%20stroke%3D%22%230F6E56%22%20stroke-width%3D%2224%22%2F%3E%3Ccircle%20cx%3D%22343%22%20cy%3D%22256%22%20r%3D%22150%22%20fill%3D%22none%22%20stroke%3D%22%23888780%22%20stroke-width%3D%2224%22%2F%3E%3Cpath%20d%3D%22M256.5%2C133.5%20A150%2C150%200%200%2C1%20256.5%2C378.5%20A150%2C150%200%200%2C1%20256.5%2C133.5%20Z%22%20fill%3D%22%231D9E75%22%2F%3E%3C%2Fsvg%3E">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="description" content="Ask several AI models the same question and see what they agree on, what's contested, and what none of them can back up — then ground the contested claims against your source.">
+<meta property="og:title" content="Second Opinion — a VeriTrace tool">
+<meta property="og:description" content="What the models agree on, what's contested, and what none of them can back up.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/assets/logo/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="/assets/logo/og-image.png">
+<meta name="author" content="Wael Alebrahim">
+<style>
+  :root{
+    --bg:#FBFAF7; --surface:#FFFFFF; --border:#E8E5DC; --border-strong:#D8D4C8;
+    --text:#1A1A17; --muted:#6B6A63; --faint:#9A988F;
+    --teal:#1D9E75; --teal-dark:#0F6E56; --teal-tint:#E4F4EC;
+    --amber:#9A6010; --amber-tint:#FBF0DB;
+    --slate:#4A4944; --slate-tint:#F0EEE6;
+    --claude:#C6613B; --gemini:#3C7DD9; --deepseek:#6B5BD4;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    line-height:1.6;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:780px;margin:0 auto;padding:32px 20px 80px;}
+
+  /* header */
+  header{display:flex;align-items:center;gap:13px;padding-bottom:22px;border-bottom:1px solid var(--border);}
+  .mark{flex:none}
+  .brand h1{font-size:21px;font-weight:600;margin:0;letter-spacing:-0.01em;}
+  .brand h1 .o{color:var(--teal)}
+  .brand p{margin:1px 0 0;font-size:12.5px;color:var(--muted);}
+
+  .lede{margin:26px 0 8px;font-size:15px;color:var(--muted);max-width:62ch;}
+
+  /* question */
+  .q-label{font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:var(--faint);margin:30px 0 10px;font-weight:600;}
+  .chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:9px;}
+  .chip{border:1px solid var(--border-strong);background:var(--surface);border-radius:11px;
+    padding:11px 14px;cursor:pointer;transition:all .15s;font-family:inherit;text-align:left;
+    display:flex;flex-direction:column;gap:3px;}
+  .chip:hover{border-color:var(--teal);}
+  .chip .cat{font-size:10.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--faint);font-weight:700;}
+  .chip .lbl{font-size:13.5px;color:var(--text);font-weight:500;line-height:1.35;}
+  .chip:hover .lbl{color:var(--teal-dark);}
+  .chip.active{background:var(--teal);border-color:var(--teal);}
+  .chip.active .cat{color:rgba(255,255,255,0.8);}
+  .chip.active .lbl{color:#fff;}
+
+  .qbox{margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+  .qbox .qtext{font-size:16px;font-weight:500;margin:0;}
+  .run{margin-top:14px;display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:#fff;
+    border:none;border-radius:9px;padding:11px 18px;font-size:14px;font-weight:600;cursor:pointer;
+    font-family:inherit;transition:background .15s;}
+  .run:hover{background:var(--teal-dark);}
+  .run:disabled{opacity:.5;cursor:default;}
+
+  .stage{margin-top:34px;opacity:0;transform:translateY(6px);transition:opacity .4s,transform .4s;}
+  .stage.show{opacity:1;transform:none;}
+  .stage-h{font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:var(--faint);
+    font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:9px;}
+  .stage-h .n{width:19px;height:19px;border-radius:50%;background:var(--slate-tint);color:var(--slate);
+    font-size:11px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;}
+
+  /* model answers */
+  .model{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:14px 16px;margin-bottom:11px;
+    opacity:0;transform:translateY(6px);transition:opacity .35s,transform .35s;}
+  .model.in{opacity:1;transform:none;}
+  .model .who{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none;}
+  .model .name{font-weight:600;font-size:13.5px;}
+  .model .ans{font-size:14px;color:#33322D;margin:0;}
+
+  /* verdict buckets */
+  .bucket{border-radius:12px;padding:16px 18px;margin-bottom:13px;border:1px solid transparent;}
+  .bucket .bh{display:flex;align-items:baseline;gap:9px;margin:0 0 4px;}
+  .bucket .bh .t{font-size:15px;font-weight:600;}
+  .bucket .bh .c{font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;}
+  .bucket .bs{font-size:12.5px;margin:0 0 13px;opacity:.85;}
+  .b-agreed{background:var(--teal-tint);border-color:#BFE6D4;}
+  .b-agreed .t,.b-agreed .bs{color:var(--teal-dark);} .b-agreed .c{background:#BFE6D4;color:var(--teal-dark);}
+  .b-contested{background:var(--amber-tint);border-color:#F0DCB0;}
+  .b-contested .t,.b-contested .bs{color:var(--amber);} .b-contested .c{background:#F0DCB0;color:var(--amber);}
+  .b-unknown{background:var(--slate-tint);border:1px dashed var(--border-strong);}
+  .b-unknown .t,.b-unknown .bs{color:var(--slate);} .b-unknown .c{background:#E2DFD4;color:var(--slate);}
+
+  .claim{padding:9px 0;border-top:1px solid rgba(0,0,0,0.06);}
+  .claim:first-of-type{border-top:none;}
+  .claim .ctext{font-size:14px;margin:0 0 5px;color:var(--text);}
+  .claim .meta{display:flex;flex-wrap:wrap;gap:5px 12px;align-items:center;font-size:12px;color:var(--muted);}
+  .who-tag{display:inline-flex;align-items:center;gap:5px;}
+  .variant{font-size:12.5px;color:#5a564d;margin:3px 0 0;padding-left:13px;border-left:2px solid #E0CFA6;}
+  .variant b{font-weight:600;}
+
+  /* grounding */
+  .ground-btn{margin-top:4px;display:inline-flex;align-items:center;gap:8px;background:var(--surface);
+    color:var(--teal-dark);border:1px solid var(--teal);border-radius:9px;padding:10px 16px;font-size:13.5px;
+    font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;}
+  .ground-btn:hover{background:var(--teal-tint);}
+  .source{background:#FCFBF8;border:1px solid var(--border);border-radius:10px;padding:13px 15px;margin:0 0 14px;}
+  .source .stitle{font-size:11.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--faint);font-weight:700;margin:0 0 7px;}
+  .source pre{font-family:var(--mono);font-size:12.5px;color:#3a3933;margin:0;white-space:pre-wrap;line-height:1.55;}
+  .check{display:flex;gap:11px;padding:11px 0;border-top:1px solid var(--border);}
+  .check:first-of-type{border-top:none;}
+  .check .badge{flex:none;font-size:11px;font-weight:700;padding:2px 9px;border-radius:6px;height:fit-content;margin-top:1px;}
+  .badge.ok{background:var(--teal-tint);color:var(--teal-dark);}
+  .badge.no{background:var(--slate-tint);color:var(--slate);}
+  .check .cl{font-size:13.5px;margin:0;}
+  .check .cn{font-size:12px;color:var(--muted);margin:3px 0 0;font-family:var(--mono);}
+
+  .footnote{margin-top:30px;padding-top:18px;border-top:1px solid var(--border);font-size:12px;color:var(--faint);max-width:60ch;}
+  .credit{margin-top:26px;padding-top:22px;border-top:1px solid var(--border);display:flex;align-items:center;gap:13px;flex-wrap:wrap;}
+  .credit .cmark{flex:none}
+  .credit .cwho{font-size:13.5px;color:var(--muted);}
+  .credit .cwho b{color:var(--text);font-weight:600;}
+  .credit .social{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;}
+  .credit .social a{display:inline-flex;align-items:center;padding:7px 13px;
+    border:1px solid var(--border-strong);border-radius:8px;color:var(--muted);text-decoration:none;
+    font-size:12.5px;font-weight:600;transition:all .15s;}
+  .credit .social a:hover{border-color:var(--teal);color:var(--teal-dark);}
+  @media (max-width:520px){.credit .social{margin-left:0;width:100%;}}
+  .osnote{margin-top:18px;background:var(--teal-tint);border:1px solid #BFE6D4;border-radius:11px;
+    padding:13px 16px;font-size:13.5px;color:var(--teal-dark);}
+  .osnote b{font-weight:600;}
+  @media (prefers-reduced-motion: reduce){
+    .stage,.model{transition:none;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <svg class="mark" width="42" height="42" viewBox="0 0 42 42" aria-label="Second Opinion mark">
+      <circle cx="16" cy="21" r="13" fill="none" stroke="#0F6E56" stroke-width="1.8"/>
+      <circle cx="26" cy="21" r="13" fill="none" stroke="#888780" stroke-width="1.8"/>
+      <path d="M21,9.6 A13,13 0 0,1 21,32.4 A13,13 0 0,1 21,9.6 Z" fill="#1D9E75" fill-opacity="0.9"/>
+    </svg>
+    <div class="brand">
+      <h1>Second <span class="o">Opinion</span></h1>
+      <p>a VeriTrace tool</p>
+    </div>
+  </header>
+
+  <p class="lede">Most tools blend several AI answers into one confident reply — and hide where the models actually disagreed. Second Opinion does the opposite: it shows you what they <b>agree on</b>, what's <b>contested</b>, and what <b>none of them can back up</b> — then checks the contested parts against your source.</p>
+
+  <div class="osnote"><b>Free and open source (MIT).</b> Use it, fork it, make it better — it's yours. Best of luck. — Wael</div>
+
+  <div class="q-label">Pick an example question</div>
+  <div class="chips" id="chips"></div>
+
+  <div class="qbox" id="qbox" style="display:none;">
+    <p class="qtext" id="qtext"></p>
+    <button class="run" id="run">Get a second opinion</button>
+  </div>
+
+  <!-- Stage 1: model answers -->
+  <div class="stage" id="s1">
+    <p class="stage-h"><span class="n">1</span> The council answers — independently</p>
+    <div id="models"></div>
+  </div>
+
+  <!-- Stage 2: verdict -->
+  <div class="stage" id="s2">
+    <p class="stage-h"><span class="n">2</span> Second Opinion sorts the claims</p>
+    <div id="verdict"></div>
+  </div>
+
+  <!-- Stage 3: grounding -->
+  <div class="stage" id="s3">
+    <p class="stage-h"><span class="n">3</span> Ground the contested claims</p>
+    <div id="ground"></div>
+  </div>
+
+  <p class="footnote">Demo mode — the model answers and source are bundled, so it runs without any API keys. The live version would call real models and ground against your own loaded documents.</p>
+
+  <div class="credit">
+    <svg class="cmark" width="30" height="30" viewBox="0 0 42 42" aria-hidden="true">
+      <circle cx="16" cy="21" r="13" fill="none" stroke="#0F6E56" stroke-width="1.8"/>
+      <circle cx="26" cy="21" r="13" fill="none" stroke="#888780" stroke-width="1.8"/>
+      <path d="M21,9.6 A13,13 0 0,1 21,32.4 A13,13 0 0,1 21,9.6 Z" fill="#1D9E75" fill-opacity="0.9"/>
+    </svg>
+    <span class="cwho">Developed by <b>Wael Alebrahim</b></span>
+    <div class="social">
+      <a href="https://x.com/walebrahim_X" target="_blank" rel="noopener" aria-label="X (Twitter)">X</a>
+      <a href="https://www.linkedin.com/in/waelalebrahim" target="_blank" rel="noopener" aria-label="LinkedIn">LinkedIn</a>
+      <a href="https://github.com/waelalebrahim" target="_blank" rel="noopener" aria-label="GitHub">GitHub</a>
+      <a href="https://waelalebrahim.com/" target="_blank" rel="noopener" aria-label="Website">Website</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const COLORS={Claude:'#C6613B',Gemini:'#3C7DD9',DeepSeek:'#6B5BD4'};
+
+const EXAMPLES=[
+{
+  cat:"Business",
+  label:"Delaware vs. Wyoming for a startup",
+  question:"Should we incorporate our startup in Delaware or Wyoming, and what's the annual franchise tax?",
+  models:[
+    {name:"Claude",ans:"For a venture-backed startup, Delaware C-corps are the standard — investors expect it and the case law is well-developed. Delaware's franchise tax for a typical small startup runs about $400–$450 a year under the assumed-par-value method. Wyoming is cheaper and private but unusual for raising VC."},
+    {name:"Gemini",ans:"Delaware is the conventional choice for companies planning to raise from VCs. The Delaware franchise tax minimum is around $175 plus a $50 report fee for most early-stage corporations. Wyoming offers strong privacy and no state income tax, which suits bootstrapped or holding companies."},
+    {name:"DeepSeek",ans:"Delaware remains the default for fundraising. Note Wyoming also runs a 2024 first-year startup grant of up to $2,500 for new tech incorporations, which can offset early costs. Franchise tax in Delaware is roughly $300 annually for small firms."},
+  ],
+  verdict:{
+    agreed:[
+      {claim:"Delaware is the conventional choice for startups planning to raise from VCs.",models:["Claude","Gemini","DeepSeek"]},
+      {claim:"Wyoming is cheaper and offers more privacy, better suited to bootstrapped or holding companies.",models:["Claude","Gemini"]},
+    ],
+    contested:[
+      {claim:"The actual Delaware annual franchise tax for a small startup.",variants:[
+        {model:"Claude",says:"about $400–$450 (assumed-par-value method)"},
+        {model:"Gemini",says:"around $175 + $50 report fee"},
+        {model:"DeepSeek",says:"roughly $300 annually"},
+      ]},
+    ],
+    unbackable:[
+      {claim:"A \u201c2024 Wyoming first-year startup grant of up to $2,500 for tech incorporations.\u201d Only one model mentions it, with no source.",models:["DeepSeek"]},
+    ],
+  },
+  grounding:{
+    sourceTitle:"Source — Incorporation cheat-sheet (internal, 2025)",
+    excerpt:"Entity choice: VC-backed → Delaware C-corp (investor standard).\nDelaware franchise tax (small co., assumed-par-value method):\n  minimum $400/yr + $50 annual report fee.\nWyoming: no state income tax; stronger owner privacy.\n  (no startup grant program on record)",
+    checks:[
+      {claim:"Delaware franchise tax for a small startup ≈ $400/yr + $50 report fee.",status:"verified",note:"matches source — Claude's figure is closest; Gemini and DeepSeek differ"},
+      {claim:"Delaware is the investor-standard entity for VC-backed startups.",status:"verified",note:"matches source"},
+      {claim:"2024 Wyoming $2,500 startup grant.",status:"unverified",note:"not in source — flagged as unknown, not asserted"},
+    ],
+  },
+},
+{
+  cat:"Engineering",
+  label:"MD5 for password hashing",
+  question:"Is it safe to use MD5 for hashing user passwords, and what should we use instead?",
+  models:[
+    {name:"Claude",ans:"No — MD5 is unsuitable for passwords. It's fast and has known collisions, so it's brute-forceable at scale. Use a slow, salted password hash: Argon2id is the current recommendation, with bcrypt as a well-supported fallback."},
+    {name:"Gemini",ans:"MD5 should never be used for passwords; it's cryptographically broken for this purpose. The standard replacement is bcrypt, which is battle-tested and widely available across languages. scrypt is another memory-hard option."},
+    {name:"DeepSeek",ans:"Correct, MD5 is unsafe for password storage. Best practice per NIST SP 800-132B is to use PBKDF2 with a high iteration count, or Argon2 for new systems."},
+  ],
+  verdict:{
+    agreed:[
+      {claim:"MD5 is unsafe for hashing passwords and should not be used.",models:["Claude","Gemini","DeepSeek"]},
+      {claim:"The fix is a slow, salted password-hashing function (not a general-purpose hash).",models:["Claude","Gemini","DeepSeek"]},
+    ],
+    contested:[
+      {claim:"Which replacement to recommend as the default.",variants:[
+        {model:"Claude",says:"Argon2id (bcrypt as fallback)"},
+        {model:"Gemini",says:"bcrypt (scrypt as alternative)"},
+        {model:"DeepSeek",says:"PBKDF2 or Argon2"},
+      ]},
+    ],
+    unbackable:[
+      {claim:"The specific reference \u201cNIST SP 800-132B.\u201d One model cites it; no source confirms that exact identifier exists.",models:["DeepSeek"]},
+    ],
+  },
+  grounding:{
+    sourceTitle:"Source — Security baseline (2025)",
+    excerpt:"Password storage:\n  DO NOT use MD5/SHA-1/SHA-256 (general hashes) for passwords.\n  Approved: Argon2id (preferred) or bcrypt.\n  All passwords salted; never store plaintext.\nReference: OWASP Password Storage Cheat Sheet.",
+    checks:[
+      {claim:"MD5 must not be used for password storage.",status:"verified",note:"matches source"},
+      {claim:"Approved replacements: Argon2id (preferred) or bcrypt.",status:"verified",note:"matches source — Claude's recommendation aligns; bcrypt also approved"},
+      {claim:"\u201cNIST SP 800-132B\u201d reference.",status:"unverified",note:"not in source — flagged as unknown, not asserted"},
+    ],
+  },
+},
+{
+  cat:"Health",
+  label:"Do I need 8 glasses of water a day?",
+  question:"Do I really need to drink 8 glasses of water a day?",
+  models:[
+    {name:"Claude",ans:"The strict \u201c8 glasses\u201d rule is a popular guideline, not a firm medical requirement. Needs vary with body size, activity, climate, and diet, and a good share of your water comes from food and other drinks. Most health bodies frame it as total daily fluids, and thirst is a reasonable guide for healthy adults."},
+    {name:"Gemini",ans:"The 8x8 rule isn't based on strong clinical evidence. The U.S. National Academies put adequate total water intake at roughly 2.7 L/day for women and 3.7 L/day for men, including water from food. For most healthy people, drinking to thirst is fine."},
+    {name:"DeepSeek",ans:"You don't strictly need exactly eight glasses; much of your intake comes from food. A reasonable total is about 2.5 L a day. A 2019 Harvard study pinned the precise optimum at 6 glasses for the average adult."},
+  ],
+  verdict:{
+    agreed:[
+      {claim:"The strict \u201c8 glasses a day\u201d rule is a popular guideline, not a firm medical requirement.",models:["Claude","Gemini","DeepSeek"]},
+      {claim:"A meaningful share of daily water intake comes from food and other drinks.",models:["Claude","Gemini","DeepSeek"]},
+    ],
+    contested:[
+      {claim:"The recommended total daily water intake.",variants:[
+        {model:"Claude",says:"varies by person; total fluids, no single number"},
+        {model:"Gemini",says:"~2.7 L women / 3.7 L men (incl. food)"},
+        {model:"DeepSeek",says:"about 2.5 L/day"},
+      ]},
+    ],
+    unbackable:[
+      {claim:"A \u201c2019 Harvard study setting the precise optimum at 6 glasses.\u201d Only one model mentions it, with no source.",models:["DeepSeek"]},
+    ],
+  },
+  grounding:{
+    sourceTitle:"Source — Hydration guidance (public-health summary, 2024)",
+    excerpt:"No strong evidence for a fixed \u201c8 glasses\u201d rule.\nU.S. National Academies adequate intake (total water, incl. food):\n  women ~2.7 L/day, men ~3.7 L/day.\n~20% of daily water typically comes from food.\nThirst is an adequate guide for most healthy adults.",
+    checks:[
+      {claim:"The \u201c8 glasses\u201d rule is not evidence-based.",status:"verified",note:"matches source"},
+      {claim:"Adequate intake \u2248 2.7 L women / 3.7 L men (total, incl. food).",status:"verified",note:"matches source — Gemini's figures align"},
+      {claim:"2019 Harvard study setting the optimum at 6 glasses.",status:"unverified",note:"not in source — flagged as unknown, not asserted"},
+    ],
+  },
+},
+{
+  cat:"History / myth",
+  label:"Is the Great Wall visible from space?",
+  question:"Is the Great Wall of China the only man-made object visible from space?",
+  models:[
+    {name:"Claude",ans:"No — that's a long-standing myth. The wall is very long but only a few meters wide, so it's extremely hard to see with the naked eye even from low Earth orbit, and it isn't visible from the Moon. Many other structures — cities, airports, reservoirs — are easier to spot."},
+    {name:"Gemini",ans:"This is a popular misconception. From low Earth orbit the wall is barely distinguishable without aid, and astronauts report that cities and highways stand out far more. The \u201conly object visible from space\u201d claim is false."},
+    {name:"DeepSeek",ans:"The claim is false — the wall blends into the terrain because it's made of similar-colored materials. China's first astronaut, Yang Liwei, said in 2003 that he could not see it. NASA's 1969 Apollo guidelines listed it as the one exception visible from orbit."},
+  ],
+  verdict:{
+    agreed:[
+      {claim:"The \u201conly man-made object visible from space\u201d claim is a myth — it is false.",models:["Claude","Gemini","DeepSeek"]},
+      {claim:"The wall is hard to see unaided from low Earth orbit; cities are more visible.",models:["Claude","Gemini","DeepSeek"]},
+    ],
+    contested:[
+      {claim:"Why it's hard to see / what evidence is cited.",variants:[
+        {model:"Claude",says:"too narrow (a few meters wide); not visible from the Moon"},
+        {model:"Gemini",says:"barely distinguishable without aid; astronauts say cities stand out"},
+        {model:"DeepSeek",says:"blends into similar-colored terrain; cites Yang Liwei (2003)"},
+      ]},
+    ],
+    unbackable:[
+      {claim:"\u201cNASA's 1969 Apollo guidelines listed the wall as the one exception visible from orbit.\u201d Only one model says this, with no source.",models:["DeepSeek"]},
+    ],
+  },
+  grounding:{
+    sourceTitle:"Source — Spaceflight visibility (educational summary)",
+    excerpt:"Myth: Great Wall is the only man-made object visible from space \u2192 false.\nThe wall is long but only ~5\u20139 m wide; very hard to see with the naked eye from low Earth orbit.\nNot visible from the Moon.\nMore visible from orbit: large cities at night, airports, reservoirs.\nAstronaut Yang Liwei (2003) reported he could not see it from orbit.",
+    checks:[
+      {claim:"The \u201conly object visible from space\u201d claim is false.",status:"verified",note:"matches source"},
+      {claim:"The wall is hard to see unaided; cities are more visible.",status:"verified",note:"matches source"},
+      {claim:"Yang Liwei (2003) could not see it from orbit.",status:"verified",note:"matches source — DeepSeek got this part right"},
+      {claim:"\u201cNASA 1969 Apollo guidelines listed it as visible.\u201d",status:"unverified",note:"not in source — flagged as unknown, not asserted"},
+    ],
+  },
+},
+{
+  cat:"Science",
+  label:"Is Pluto a planet?",
+  question:"Is Pluto a planet?",
+  models:[
+    {name:"Claude",ans:"Not under the formal definition. In 2006 the International Astronomical Union (IAU) reclassified Pluto as a \u201cdwarf planet\u201d because it hasn't cleared its orbital neighborhood of other objects. It still orbits the Sun and is round. The decision is still debated among some planetary scientists."},
+    {name:"Gemini",ans:"Pluto is classified as a dwarf planet, not a full planet, after the IAU's 2006 vote. The deciding factor is the third criterion: it shares its orbital zone — the Kuiper Belt — with many other bodies. Some scientists continue to object to the definition."},
+    {name:"DeepSeek",ans:"Under the 2006 IAU resolution, Pluto is a dwarf planet — it failed the \u201cclearing the neighborhood\u201d test. The resolution passed by a unanimous 2,500-to-0 vote of all attending members, settling the matter definitively."},
+  ],
+  verdict:{
+    agreed:[
+      {claim:"Pluto is classified as a dwarf planet, not a full planet, after the IAU's 2006 decision.",models:["Claude","Gemini","DeepSeek"]},
+      {claim:"The deciding reason is that Pluto hasn't \u201ccleared its orbital neighborhood.\u201d",models:["Claude","Gemini","DeepSeek"]},
+    ],
+    contested:[
+      {claim:"How settled the reclassification actually is.",variants:[
+        {model:"Claude",says:"still debated among some planetary scientists"},
+        {model:"Gemini",says:"some scientists continue to object"},
+        {model:"DeepSeek",says:"settled definitively"},
+      ]},
+    ],
+    unbackable:[
+      {claim:"The claim it passed by a \u201cunanimous 2,500-to-0 vote.\u201d Only one model gives this tally, with no source.",models:["DeepSeek"]},
+    ],
+  },
+  grounding:{
+    sourceTitle:"Source — IAU 2006 Resolution 5A (summary)",
+    excerpt:"A planet must: (a) orbit the Sun, (b) be rounded by its own gravity,\n  (c) have cleared the neighborhood around its orbit.\nPluto meets (a) and (b) but not (c) \u2192 classified as a \u201cdwarf planet.\u201d\nAdopted by a show-of-hands vote at the 2006 IAU General Assembly, Prague.\nThe definition remains debated among some planetary scientists.",
+    checks:[
+      {claim:"Pluto is a dwarf planet because it hasn't cleared its orbital neighborhood.",status:"verified",note:"matches source"},
+      {claim:"The definition is still debated among some scientists.",status:"verified",note:"matches source — Claude and Gemini align"},
+      {claim:"\u201cUnanimous 2,500-to-0 vote.\u201d",status:"unverified",note:"source records a show-of-hands, no such tally — flagged as unknown"},
+    ],
+  },
+},
+{
+  cat:"Personal finance",
+  label:"Average return of the S&P 500",
+  question:"What's the long-term average annual return of the S&P 500?",
+  models:[
+    {name:"Claude",ans:"Roughly 10% a year in nominal terms over the long run, with dividends reinvested. After inflation the \u201creal\u201d return is closer to 6\u20137%. Any single year varies widely, and the average depends heavily on the time window you pick."},
+    {name:"Gemini",ans:"The commonly cited figure is about 10% annually (nominal, dividends reinvested) since the late 1920s. Adjusted for inflation it's roughly 6.5\u20137%. Past performance doesn't guarantee future results."},
+    {name:"DeepSeek",ans:"Historically around 10% nominal, or about 8% after inflation. Worth noting: the index has never had a negative 10-year stretch, which makes it effectively risk-free over any decade."},
+  ],
+  verdict:{
+    agreed:[
+      {claim:"The long-run nominal average is about 10% a year, with dividends reinvested.",models:["Claude","Gemini","DeepSeek"]},
+      {claim:"Single-year returns vary widely; the average depends on the time window.",models:["Claude","Gemini"]},
+    ],
+    contested:[
+      {claim:"The inflation-adjusted (real) average return.",variants:[
+        {model:"Claude",says:"about 6\u20137%"},
+        {model:"Gemini",says:"roughly 6.5\u20137%"},
+        {model:"DeepSeek",says:"about 8%"},
+      ]},
+    ],
+    unbackable:[
+      {claim:"The claim it has \u201cnever had a negative 10-year stretch\u201d and is \u201ceffectively risk-free over any decade.\u201d Only one model says this, with no source.",models:["DeepSeek"]},
+    ],
+  },
+  grounding:{
+    sourceTitle:"Source — Market-returns primer (2024)",
+    excerpt:"S&P 500 long-run average (since 1926, dividends reinvested): ~10% nominal/yr.\nInflation-adjusted (real): ~6.5\u20137%/yr.\nReturns vary widely year to year; some 10-year periods (e.g. 2000\u20132009)\n  delivered roughly flat or negative real returns.\nPast performance does not guarantee future results.",
+    checks:[
+      {claim:"Long-run nominal average \u2248 10%/yr, with dividends reinvested.",status:"verified",note:"matches source"},
+      {claim:"Real (inflation-adjusted) average \u2248 6.5\u20137%/yr.",status:"verified",note:"matches source — Claude and Gemini align; DeepSeek's 8% runs high"},
+      {claim:"\u201cNever a negative 10-year stretch / risk-free over any decade.\u201d",status:"unverified",note:"source notes some 10-yr periods were flat or negative — flagged as unknown"},
+    ],
+  },
+},
+];
+
+let current=0, ran=false;
+const $=id=>document.getElementById(id);
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// build chips
+const chips=$('chips');
+EXAMPLES.forEach((ex,i)=>{
+  const b=document.createElement('button');
+  b.className='chip';
+  b.innerHTML=`<span class="cat">${ex.cat}</span><span class="lbl">${ex.label}</span>`;
+  b.onclick=()=>selectExample(i,b);
+  chips.appendChild(b);
+});
+
+function selectExample(i,btn){
+  current=i; ran=false;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  $('qtext').textContent=EXAMPLES[i].question;
+  $('qbox').style.display='block';
+  $('run').disabled=false;
+  ['s1','s2','s3'].forEach(s=>$(s).classList.remove('show'));
+  $('models').innerHTML=''; $('verdict').innerHTML=''; $('ground').innerHTML='';
+}
+
+$('run').onclick=()=>{
+  if(ran) return; ran=true; $('run').disabled=true;
+  const ex=EXAMPLES[current];
+  // Stage 1
+  $('s1').classList.add('show');
+  ex.models.forEach((m,idx)=>{
+    const el=document.createElement('div');
+    el.className='model';
+    el.innerHTML=`<div class="who"><span class="dot" style="background:${COLORS[m.name]}"></span>
+      <span class="name">${m.name}</span></div><p class="ans">${m.ans}</p>`;
+    $('models').appendChild(el);
+    setTimeout(()=>el.classList.add('in'), reduce?0:idx*420);
+  });
+  const t1=reduce?0:ex.models.length*420+250;
+  setTimeout(renderVerdict, t1);
+};
+
+function whoTags(names){
+  return names.map(n=>`<span class="who-tag"><span class="dot" style="background:${COLORS[n]}"></span>${n}</span>`).join('');
+}
+
+function renderVerdict(){
+  const ex=EXAMPLES[current], v=ex.verdict, out=$('verdict');
+  let h='';
+  // agreed
+  h+=`<div class="bucket b-agreed"><div class="bh"><span class="t">Agreed</span>
+    <span class="c">${v.agreed.length}</span></div>
+    <p class="bs">All or most models say the same thing — treat as solid.</p>`;
+  v.agreed.forEach(c=>{
+    h+=`<div class="claim"><p class="ctext">${c.claim}</p><div class="meta">${whoTags(c.models)}</div></div>`;
+  });
+  h+=`</div>`;
+  // contested
+  h+=`<div class="bucket b-contested"><div class="bh"><span class="t">Contested</span>
+    <span class="c">${v.contested.length}</span></div>
+    <p class="bs">The models disagree here — don't trust any single one yet.</p>`;
+  v.contested.forEach(c=>{
+    let vars=c.variants.map(x=>`<p class="variant"><b>${x.model}:</b> ${x.says}</p>`).join('');
+    h+=`<div class="claim"><p class="ctext">${c.claim}</p>${vars}</div>`;
+  });
+  h+=`</div>`;
+  // unbackable
+  h+=`<div class="bucket b-unknown"><div class="bh"><span class="t">Nobody can back this up</span>
+    <span class="c">${v.unbackable.length}</span></div>
+    <p class="bs">Second Opinion won't guess — flagged as unknown.</p>`;
+  v.unbackable.forEach(c=>{
+    h+=`<div class="claim"><p class="ctext">${c.claim}</p><div class="meta">${whoTags(c.models)}</div></div>`;
+  });
+  h+=`</div>`;
+  out.innerHTML=h;
+  $('s2').classList.add('show');
+  // grounding stage with a button
+  setTimeout(()=>{
+    $('ground').innerHTML=`<button class="ground-btn" id="gbtn">Check the contested claims against your source</button>`;
+    $('s3').classList.add('show');
+    $('gbtn').onclick=renderGround;
+  }, reduce?0:500);
+}
+
+function renderGround(){
+  const g=EXAMPLES[current].grounding;
+  let h=`<div class="source"><p class="stitle">${g.sourceTitle}</p><pre>${g.excerpt}</pre></div>`;
+  g.checks.forEach(c=>{
+    const ok=c.status==='verified';
+    h+=`<div class="check"><span class="badge ${ok?'ok':'no'}">${ok?'VERIFIED':'UNVERIFIED'}</span>
+      <div><p class="cl">${c.claim}</p><p class="cn">${c.note}</p></div></div>`;
+  });
+  $('ground').innerHTML=h;
+}
+</script>
+</body>
+</html>

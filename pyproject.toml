@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "secondopinion"
+version = "0.1.0"
+description = "A multi-model second opinion that won't hide the disagreement — agreed, contested, or honestly unbackable."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Wael Alebrahim" }]
+keywords = ["llm", "multi-model", "grounding", "verification", "veritrace", "hallucination"]
+dependencies = [
+    # Built on the VeriTrace engine. Until it is on PyPI, install it first:
+    #   pip install "git+https://github.com/waelalebrahim/wa-VeriTrace-project.git"
+    "veritrace",
+]
+
+[project.urls]
+Homepage = "https://github.com/waelalebrahim/wa-second-opinion"
+Author = "https://waelalebrahim.com/"
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.setuptools]
+packages = ["secondopinion"]
