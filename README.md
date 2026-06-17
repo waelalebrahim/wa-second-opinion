@@ -7,7 +7,7 @@ It's [VeriTrace](https://github.com/waelalebrahim/wa-VeriTrace-project), pointed
 🔗 **Live demo:** *add your Cloudflare Pages URL here once deployed* runs entirely in the browser, no server, no keys.
 
 - **The disagreement is the signal.** No blended "best answer" that buries where the models split.
-- **Agreement is not truth.** Every claim — even one all models share is checked against your sources by VeriTrace.
+- **Agreement is not truth.** Every claim even one all models share is checked against your sources by VeriTrace.
 - **It judges claims, not whole answers.** A model can be right on one line and flagged on the next.
 - **Dependency-light.** Pure standard library plus the VeriTrace engine. Models are reached through OpenRouter (one key, many providers) or stubbed for offline runs and tests.
 
