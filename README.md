@@ -1,15 +1,15 @@
 # Second Opinion
 
-**A multi-model second opinion that won't hide the disagreement.** Ask several AI models the same question. Instead of blending their answers into one confident reply, Second Opinion shows you what they **agree on**, what's **contested**, and what **none of them can back up** — then grounds the claims against the documents you trust. If nothing can back a claim, it says so.
+**A multi-model second opinion that won't hide the disagreement.** Ask several AI models the same question. Instead of blending their answers into one confident reply, Second Opinion shows you what they **agree on**, what's **contested**, and what **none of them can back up** then grounds the claims against the documents you trust. If nothing can back a claim, it says so.
 
-It's [VeriTrace](https://github.com/waelalebrahim/wa-VeriTrace-project), pointed at the gap between models — the enforcement of [The I Don't Know Project](https://theidkproject.ai) applied across a council of models instead of one.
+It's [VeriTrace](https://github.com/waelalebrahim/wa-VeriTrace-project), pointed at the gap between models the enforcement of [The I Don't Know Project](https://theidkproject.ai) applied across a council of models instead of one.
 
-🔗 **Live demo:** *add your Cloudflare Pages URL here once deployed* — runs entirely in the browser, no server, no keys.
+🔗 **Live demo:** *add your Cloudflare Pages URL here once deployed* runs entirely in the browser, no server, no keys.
 
 - **The disagreement is the signal.** No blended "best answer" that buries where the models split.
-- **Agreement is not truth.** Every claim — even one all models share — is checked against your sources by VeriTrace.
+- **Agreement is not truth.** Every claim — even one all models share is checked against your sources by VeriTrace.
 - **It judges claims, not whole answers.** A model can be right on one line and flagged on the next.
-- **Dependency-light.** Pure standard library plus the VeriTrace engine. Models are reached through OpenRouter (one key, many providers) — or stubbed for offline runs and tests.
+- **Dependency-light.** Pure standard library plus the VeriTrace engine. Models are reached through OpenRouter (one key, many providers) or stubbed for offline runs and tests.
 
 ---
 
