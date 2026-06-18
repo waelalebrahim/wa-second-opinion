@@ -115,7 +115,7 @@ Every push then auto-deploys the updated demo.
 
 ## Honest limitations
 
-This is a V1, and the genuinely hard parts are deferred — not hidden.
+This is a V1, and the genuinely hard parts are deferred not hidden.
 
 - **Agreement is lexical, not semantic.** Models clustered as "agreeing" are matched on wording overlap, not deep meaning. Paraphrased agreement can be missed and split into `CONTESTED`.
 - **Inherited from VeriTrace's lexical backend:** a fabrication that reuses real entities from your sources scores `MEDIUM`, not `LOW`. So it lands in `CONTESTED` (not certified) rather than `UNBACKABLE` (fully rejected). This is tested on purpose (`test_known_limitation_entity_reuse_grounds_medium_not_low`). A semantic/NLI backend is the fix.
@@ -124,7 +124,7 @@ This is a V1, and the genuinely hard parts are deferred — not hidden.
 
 ## Roadmap
 
-- [ ] Semantic / NLI grounding backend (the big quality unlock — also VeriTrace's roadmap)
+- [ ] Semantic / NLI grounding backend (the big quality unlock also VeriTrace's roadmap)
 - [ ] Detect direct contradictions on the same topic, not just divergence
 - [ ] Parallel model calls
 - [ ] Bring-your-own-source upload in the web demo
@@ -134,6 +134,6 @@ This is a V1, and the genuinely hard parts are deferred — not hidden.
 
 MIT free to use, copy, modify, and redistribute. Per the MIT terms, the copyright and author notice must travel with the code.
 
-Created by **Wael Alebrahim** — [website](https://waelalebrahim.com/) | [X](https://x.com/walebrahim_X) | [LinkedIn](https://www.linkedin.com/in/waelalebrahim) | [GitHub](https://github.com/waelalebrahim)
+Created by **Wael Alebrahim**  [website](https://waelalebrahim.com/) | [LinkedIn](https://www.linkedin.com/in/waelalebrahim) | [GitHub](https://github.com/waelalebrahim)
 
 Use it, fork it, make it better. Best of luck. Wael
