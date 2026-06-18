@@ -132,8 +132,8 @@ This is a V1, and the genuinely hard parts are deferred — not hidden.
 
 ## License & attribution
 
-MIT — free to use, copy, modify, and redistribute. Per the MIT terms, the copyright and author notice must travel with the code.
+MIT free to use, copy, modify, and redistribute. Per the MIT terms, the copyright and author notice must travel with the code.
 
 Created by **Wael Alebrahim** — [website](https://waelalebrahim.com/) | [X](https://x.com/walebrahim_X) | [LinkedIn](https://www.linkedin.com/in/waelalebrahim) | [GitHub](https://github.com/waelalebrahim)
 
-Use it, fork it, make it better. Best of luck.
+Use it, fork it, make it better. Best of luck. Wael
